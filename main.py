@@ -86,7 +86,7 @@ while running:
             scroll_y += event.y * 15 # Scroll speed multiplier
 
             # Constrain scrolling within bounds
-            max_scroll = max(0, content_height - viewport_height)
+            max_scroll = max(0, (content_height+100) - viewport_height)
             if scroll_y > 0:
                 scroll_y = 0
             if scroll_y < -max_scroll:
@@ -119,3 +119,4 @@ while running:
 # Quit Pygame
 pygame.quit()
 sys.exit()
+

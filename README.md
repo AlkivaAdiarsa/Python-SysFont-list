@@ -1,5 +1,6 @@
 # Python-SysFont-list
-[How To Install](#how-to-install)\
+[how to install](https://github.com/AlkivaAdiarsa/Python-SysFont-list/tree/main?tab=readme-ov-file#how-to-install)
+<hr/>
 **A project that lists all Sysfonts in your computer in a pygame window.**\
 > Window Preview:
 <hr/>

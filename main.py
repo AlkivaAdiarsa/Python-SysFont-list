@@ -72,7 +72,22 @@ text_rect.center = (SCREEN_WIDTH // 2, 25) # Center the text
 # Scrolling variables
 scroll_y = 0
 content_height = len(font_surfaces_data) * LINE_HEIGHT
-viewport_height = SCREEN_HEIGHT
+content_height += 100
+# Content is drawn starting at y=65, so viewport for the list excludes header area
+CONTENT_TOP = 65
+CONTENT_BOTTOM_PADDING = 10
+viewport_height = SCREEN_HEIGHT - CONTENT_TOP - CONTENT_BOTTOM_PADDING
+
+# Scrollbar configuration
+SCROLLBAR_WIDTH = 12
+SCROLLBAR_PADDING = 8
+SCROLLBAR_COLOR = (220, 220, 220)
+SCROLLBAR_THUMB_COLOR = (140, 140, 140)
+SCROLLBAR_THUMB_MIN_HEIGHT = 30
+
+# Thumb dragging state
+dragging_thumb = False
+drag_offset_y = 0
 
 # Main game loop
 running = True
@@ -86,11 +101,56 @@ while running:
             scroll_y += event.y * 15 # Scroll speed multiplier
 
             # Constrain scrolling within bounds
-            max_scroll = max(0, (content_height+100) - viewport_height)
+            max_scroll = max(0, content_height - viewport_height)
             if scroll_y > 0:
                 scroll_y = 0
             if scroll_y < -max_scroll:
                 scroll_y = -max_scroll
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            if event.button == 1:  # Left click
+                mx, my = event.pos
+                # Build track rect for hit testing
+                track_x = SCREEN_WIDTH - SCROLLBAR_WIDTH - SCROLLBAR_PADDING
+                track_y = CONTENT_TOP
+                track_h = viewport_height
+                track_rect = pygame.Rect(track_x, track_y, SCROLLBAR_WIDTH, track_h)
+
+                # Compute thumb size and position
+                if content_height > 0 and content_height > viewport_height:
+                    thumb_h = max(SCROLLBAR_THUMB_MIN_HEIGHT, int(viewport_height * (viewport_height / content_height)))
+                    max_scroll = content_height - viewport_height
+                    scroll_pct = (-scroll_y) / max_scroll if max_scroll > 0 else 0
+                    thumb_y = int(track_y + scroll_pct * (track_h - thumb_h))
+                    thumb_rect = pygame.Rect(track_x, thumb_y, SCROLLBAR_WIDTH, thumb_h)
+                else:
+                    thumb_rect = pygame.Rect(track_x, track_y, SCROLLBAR_WIDTH, track_h)
+
+                if thumb_rect.collidepoint((mx, my)):
+                    dragging_thumb = True
+                    drag_offset_y = my - thumb_rect.y
+                elif track_rect.collidepoint((mx, my)):
+                    # Click on track: move thumb center to mouse and update scroll
+                    # Compute new thumb_y then map to scroll_y
+                    if content_height > viewport_height:
+                        new_thumb_y = max(track_y, min(my - (thumb_rect.height // 2), track_y + track_h - thumb_rect.height))
+                        rel = (new_thumb_y - track_y) / (track_h - thumb_rect.height)
+                        max_scroll = content_height - viewport_height
+                        scroll_y = -int(rel * max_scroll)
+        elif event.type == pygame.MOUSEBUTTONUP:
+            if event.button == 1:
+                dragging_thumb = False
+        elif event.type == pygame.MOUSEMOTION:
+            if dragging_thumb:
+                mx, my = event.pos
+                track_x = SCREEN_WIDTH - SCROLLBAR_WIDTH - SCROLLBAR_PADDING
+                track_y = CONTENT_TOP
+                track_h = viewport_height
+                if content_height > viewport_height:
+                    thumb_h = max(SCROLLBAR_THUMB_MIN_HEIGHT, int(viewport_height * (viewport_height / content_height)))
+                    new_thumb_y = max(track_y, min(my - drag_offset_y, track_y + track_h - thumb_h))
+                    rel = (new_thumb_y - track_y) / (track_h - thumb_h)
+                    max_scroll = content_height - viewport_height
+                    scroll_y = -int(rel * max_scroll)
 
     screen.fill(BG_COLOR)
 
@@ -107,8 +167,29 @@ while running:
             offset_x = arial_surf.get_width() + 20
             screen.blit(specific_surf, (offset_x, y_pos))
 
+    # Draw header background and title
     pygame.draw.rect(screen, "white", (0, 0, SCREEN_WIDTH, 50),)
     screen.blit(text_surface, text_rect)
+
+    # Draw scrollbar on the right side
+    track_x = SCREEN_WIDTH - SCROLLBAR_WIDTH - SCROLLBAR_PADDING
+    track_y = CONTENT_TOP
+    track_h = viewport_height
+    track_rect = pygame.Rect(track_x, track_y, SCROLLBAR_WIDTH, track_h)
+
+    if content_height > viewport_height:
+        # Thumb size proportional to viewport/content
+        thumb_h = max(SCROLLBAR_THUMB_MIN_HEIGHT, int(viewport_height * (viewport_height / content_height)))
+        max_scroll = content_height - viewport_height
+        scroll_pct = (-scroll_y) / max_scroll if max_scroll > 0 else 0
+        thumb_y = int(track_y + scroll_pct * (track_h - thumb_h))
+        thumb_rect = pygame.Rect(track_x, thumb_y, SCROLLBAR_WIDTH, thumb_h)
+
+        pygame.draw.rect(screen, SCROLLBAR_COLOR, track_rect, border_radius=6)
+        pygame.draw.rect(screen, SCROLLBAR_THUMB_COLOR, thumb_rect, border_radius=6)
+    else:
+        # Draw disabled track (content fits)
+        pygame.draw.rect(screen, (240, 240, 240), track_rect, border_radius=6)
 
     # Update the display
     pygame.display.flip()
@@ -119,4 +200,5 @@ while running:
 # Quit Pygame
 pygame.quit()
 sys.exit()
+
 
